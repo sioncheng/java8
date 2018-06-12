@@ -40,6 +40,8 @@ public class GatherScatterChannel {
         System.out.println(charset.decode(buffer2));
 
         fileChannel.close();
+
+        randomAccessFile.close();
     }
 
     private static void gatherFile(String filepath) throws IOException {
@@ -56,5 +58,7 @@ public class GatherScatterChannel {
         System.out.println(String.format("have wrote %d bytes", l));
 
         fileChannel.close();
+
+        randomAccessFile.close();
     }
 }
