@@ -1,6 +1,6 @@
 package com.github.sioncheng.springbt;
 
-public class Bootmain {
+public class BootMain {
 
     public static void main(String[] args){
 

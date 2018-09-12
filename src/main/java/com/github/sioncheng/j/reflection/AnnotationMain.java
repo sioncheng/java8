@@ -19,5 +19,10 @@ public class AnnotationMain {
                 System.out.println(val);
             }
         }
+
+        Package packagge = MyClass.class.getPackage();
+        System.out.println(packagge.toString());
+        System.out.println(packagge.getImplementationVersion());
+        System.out.println(String.class.getPackage().getImplementationVersion());
     }
 }

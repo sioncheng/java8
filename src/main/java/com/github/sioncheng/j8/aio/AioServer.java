@@ -25,8 +25,11 @@ public class AioServer {
         
         serverSocketChannel.accept(null, new CompletionHandler<AsynchronousSocketChannel, Object>() {
 
+
             @Override
             public void completed(AsynchronousSocketChannel result, Object attachment) {
+
+                System.out.println(Thread.currentThread().getName());
 
                 try {
                     System.out.println("new connection in " + result.getRemoteAddress().toString());
