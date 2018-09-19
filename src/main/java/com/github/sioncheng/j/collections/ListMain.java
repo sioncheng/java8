@@ -1,9 +1,10 @@
 package com.github.sioncheng.j.collections;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
-public class ArrayListMain {
+public class ListMain {
 
     public static void main(String[] args) {
         ArrayList<Integer> al = new ArrayList<Integer>(10);
@@ -23,5 +24,9 @@ public class ArrayListMain {
             System.out.print(String.format("%5d", elem));
         }
         System.out.println();
+
+        LinkedList<Integer> linkList = new LinkedList<>();
+        linkList.add(1);
+        linkList.add(2);
     }
 }
