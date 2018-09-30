@@ -9,6 +9,16 @@ public class MyClassLoader extends ClassLoader {
     }
 
     @Override
+    protected Class<?> loadClass(String name, boolean resolve)
+            throws ClassNotFoundException {
+        System.out.println("findClass directly");
+        if ("myString".equals(name) || "myClass".equals(name))
+            return findClass(name);
+        else
+            return Thread.currentThread().getContextClassLoader().loadClass(name);
+    }
+
+    @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         if ("myString".equals(name)) {
             System.out.println("return String as myString");
