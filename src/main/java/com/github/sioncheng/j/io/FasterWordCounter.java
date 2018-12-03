@@ -48,8 +48,9 @@ public class FasterWordCounter {
         boolean first = false;
         int s = -1;
         int e = -1;
+
         while (n != -1) {
-            for (int i = e+1 ; i < n; i++) {
+            for (int i = 0 ; i < n; i++) {
                 byte b = buffer[i];
                 if ( (b >= a && b <= z) || (b >= A && b <= Z) ) {
                     if (!first) {
@@ -76,8 +77,9 @@ public class FasterWordCounter {
                 for (int j = s; j <=e; j++, ii++) {
                     buffer[ii] = buffer[j];
                 }
-                s = 0;
-                e = ii - 1;
+                first = false;
+                s = -1;
+                e = -1;
             }
 
             n = fileInputStream.read(buffer, ii, bufferSize - ii) + ii;
