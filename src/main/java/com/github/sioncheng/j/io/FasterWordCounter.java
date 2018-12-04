@@ -1,15 +1,83 @@
 package com.github.sioncheng.j.io;
 
+import sun.jvmstat.perfdata.monitor.CountedTimerTask;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class FasterWordCounter {
+
+    static final int a = (int)'a';
+    static final int z = (int)'z';
+    static final int A = (int)'A';
+    static final int Z = (int)'Z';
+
+
+    static class CounterItem {
+
+        private byte[] bytes;
+        private int count;
+
+        public CounterItem(byte[] bytes) {
+            this.bytes = bytes;
+            this.count = 0;
+            this.toLowercase();
+        }
+
+        public void inc() {
+            this.count = this.count + 1;
+        }
+
+        public int getCount() {
+            return this.count;
+        }
+
+        private void toLowercase() {
+            for (int i = 0 ; i < this.bytes.length; i++) {
+                if (this.bytes[i] >= A && this.bytes[i] <= Z) {
+                    this.bytes[i] = (byte)(this.bytes[i] + 32);
+                }
+            }
+        }
+
+        @Override
+        public int hashCode() {
+            int h = 0;
+            for (int i = 0 ; i < this.bytes.length; i++) {
+                h = h * 37 + this.bytes[i];
+            }
+
+            return h;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) {
+                return true;
+            }
+
+            CounterItem that = (CounterItem) obj;
+
+            if (that.bytes.length != this.bytes.length) {
+                return false;
+            }
+
+            for (int i = 0 ; i < that.bytes.length; i++) {
+                if (that.bytes[i] != this.bytes[i]) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
 
 
     public static volatile boolean taskEnd = false;
@@ -19,6 +87,7 @@ public class FasterWordCounter {
         long begin = System.currentTimeMillis();
 
         final String path = "/Users/sion/Downloads/PrideAndPrejudice.txt";
+        //final String path = "/Users/sion/Downloads/PrideAndPrejudice-t.txt";
 
         File file = new File(path);
 
@@ -33,14 +102,14 @@ public class FasterWordCounter {
             submitted.put(i, new AtomicInteger(0));
         }
 
-        HashMap<Integer, LinkedBlockingQueue<String>> tasks = new HashMap<>(4);
+        HashMap<Integer, LinkedBlockingQueue<CounterItem>> tasks = new HashMap<>(4);
         for (int i = 0 ; i < concurrency; i++) {
             tasks.put(i, new LinkedBlockingQueue());
         }
 
-        HashMap<Integer, HashMap<String, AtomicInteger>> hashMapHashMap = new HashMap<>(concurrency);
+        HashMap<Integer, HashMap<CounterItem, CounterItem>> hashMapHashMap = new HashMap<>(concurrency);
         for(int i = 0 ; i < concurrency; i++) {
-            HashMap<String, AtomicInteger> stringIntegerHashMap = new HashMap<>(3000);
+            HashMap<CounterItem, CounterItem> stringIntegerHashMap = new HashMap<>(3000);
             hashMapHashMap.put(i, stringIntegerHashMap);
         }
 
@@ -53,7 +122,7 @@ public class FasterWordCounter {
                 public void run() {
                     while (true) {
                         try {
-                            String word = tasks.get(h).poll(100, TimeUnit.MILLISECONDS);
+                            CounterItem word = tasks.get(h).poll(100, TimeUnit.MILLISECONDS);
                             if (word == null) {
                                 if (taskEnd) {
                                     break;
@@ -62,11 +131,13 @@ public class FasterWordCounter {
                                 }
                             }
 
-                            HashMap<String, AtomicInteger> stringIntegerHashMap = hashMapHashMap.get(h);
-                            if (stringIntegerHashMap.containsKey(word)) {
-                                stringIntegerHashMap.get(word).incrementAndGet();
+                            HashMap<CounterItem, CounterItem> stringIntegerHashMap = hashMapHashMap.get(h);
+                            CounterItem c = stringIntegerHashMap.get(word);
+                            if (c == null) {
+                                word.inc();
+                                stringIntegerHashMap.put(word, word);
                             } else {
-                                stringIntegerHashMap.put(word, new AtomicInteger(1));
+                                c.inc();
                             }
                         } catch (InterruptedException ie) {
                             ie.printStackTrace();
@@ -86,10 +157,6 @@ public class FasterWordCounter {
 
         int n = fileInputStream.read(buffer, 0 , bufferSize);
 
-        final int a = (int)'a';
-        final int z = (int)'z';
-        final int A = (int)'A';
-        final int Z = (int)'Z';
 
 
         boolean first = false;
@@ -109,8 +176,11 @@ public class FasterWordCounter {
                     }
                 } else {
                     if (e >= s && s != -1) {
-                        String word = new String(buffer, s, e-s+1);
-                        int h = word.substring(0, 1).charAt(0) % concurrency;
+                        //String word =  new String(buffer, s, e-s+1).toLowerCase();
+                        byte[] bytes = new byte[e-s+1];
+                        System.arraycopy(buffer, s, bytes, 0, bytes.length);
+                        CounterItem word = new CounterItem(bytes);
+                        int h = buffer[s] % concurrency;
                         tasks.get(h).add(word);
                         submitted.get(h).incrementAndGet();
 
@@ -134,8 +204,11 @@ public class FasterWordCounter {
         }
 
         if (e >= s && s != -1) {
-            String word = new String(buffer, s, e-s+1);
-            int h = word.substring(0, 1).charAt(0) % concurrency;
+            //String word =  new String(buffer, s, e-s+1).toLowerCase();
+            byte[] bytes = new byte[e-s+1];
+            System.arraycopy(buffer, s, bytes, 0, bytes.length);
+            CounterItem word = new CounterItem(bytes);
+            int h = buffer[s] % concurrency;
             tasks.get(h).add(word);
             submitted.get(h).incrementAndGet();
         }
@@ -164,12 +237,14 @@ public class FasterWordCounter {
 
         BufferedOutputStream fileOutputStream =
                 new BufferedOutputStream(new FileOutputStream("/Users/sion/count.txt"));
-        for (Map.Entry<Integer, HashMap<String, AtomicInteger>> counter :
+        for (Map.Entry<Integer, HashMap<CounterItem, CounterItem>> counter :
                 hashMapHashMap.entrySet()) {
-            for (Map.Entry<String, AtomicInteger> kv:
+            for (Map.Entry<CounterItem, CounterItem> kv:
                  counter.getValue().entrySet()) {
 
-                fileOutputStream.write(String.format("%s %d \n", kv.getKey(), kv.getValue().intValue()).getBytes());
+                String w = new String(kv.getKey().bytes);
+
+                fileOutputStream.write(String.format("%s %d \n", w, kv.getValue().getCount()).getBytes());
             }
         }
         fileOutputStream.close();

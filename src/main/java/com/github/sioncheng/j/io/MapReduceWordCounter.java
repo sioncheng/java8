@@ -21,7 +21,7 @@ public class MapReduceWordCounter {
 
         FileInputStream fileInputStream = new FileInputStream(new File(path));
 
-        final int bufferSize = 4096;
+        final int bufferSize = 8192;
 
         byte[] buffer = new byte[bufferSize];
 
