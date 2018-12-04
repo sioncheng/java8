@@ -1,16 +1,18 @@
 package com.github.sioncheng.j.io;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class FasterWordCounter {
+
+
+    public static volatile boolean taskEnd = false;
 
     public static void main(String[] args) throws Exception {
 
@@ -24,16 +26,61 @@ public class FasterWordCounter {
             return;
         }
 
-        ConcurrentHashMap<String, Integer> counters =
-                new ConcurrentHashMap<>();
+        final int concurrency = 4 ;
 
-        ExecutorService executorService = Executors.newFixedThreadPool(4);
+        HashMap<Integer, AtomicInteger> submitted = new HashMap<>();
+        for(int i = 0 ; i < concurrency; i++) {
+            submitted.put(i, new AtomicInteger(0));
+        }
+
+        HashMap<Integer, LinkedBlockingQueue<String>> tasks = new HashMap<>(4);
+        for (int i = 0 ; i < concurrency; i++) {
+            tasks.put(i, new LinkedBlockingQueue());
+        }
+
+        HashMap<Integer, HashMap<String, AtomicInteger>> hashMapHashMap = new HashMap<>(concurrency);
+        for(int i = 0 ; i < concurrency; i++) {
+            HashMap<String, AtomicInteger> stringIntegerHashMap = new HashMap<>(3000);
+            hashMapHashMap.put(i, stringIntegerHashMap);
+        }
+
+        HashMap<Integer, ExecutorService> executorServiceHashMap = new HashMap<>(concurrency);
+        for(int i = 0 ; i < concurrency; i++) {
+            final int h = i;
+            executorServiceHashMap.put(h, Executors.newFixedThreadPool(1));
+            executorServiceHashMap.get(h).submit(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
+                        try {
+                            String word = tasks.get(h).poll(100, TimeUnit.MILLISECONDS);
+                            if (word == null) {
+                                if (taskEnd) {
+                                    break;
+                                } else {
+                                    continue;
+                                }
+                            }
+
+                            HashMap<String, AtomicInteger> stringIntegerHashMap = hashMapHashMap.get(h);
+                            if (stringIntegerHashMap.containsKey(word)) {
+                                stringIntegerHashMap.get(word).incrementAndGet();
+                            } else {
+                                stringIntegerHashMap.put(word, new AtomicInteger(1));
+                            }
+                        } catch (InterruptedException ie) {
+                            ie.printStackTrace();
+                        }
+                        submitted.get(h).decrementAndGet();
+                    }
+                }
+            });
+        }
+
 
         FileInputStream fileInputStream = new FileInputStream(file);
 
-        AtomicInteger submitted = new AtomicInteger(0);
-
-        final int bufferSize = 4096;
+        final int bufferSize = 8192;
 
         byte[] buffer = new byte[bufferSize];
 
@@ -63,8 +110,9 @@ public class FasterWordCounter {
                 } else {
                     if (e >= s && s != -1) {
                         String word = new String(buffer, s, e-s+1);
-                        submitted.incrementAndGet();
-                        count(executorService, word.toLowerCase(), counters, submitted);
+                        int h = word.substring(0, 1).charAt(0) % concurrency;
+                        tasks.get(h).add(word);
+                        submitted.get(h).incrementAndGet();
 
                         e = s = -1;
                         first = false;
@@ -87,12 +135,25 @@ public class FasterWordCounter {
 
         if (e >= s && s != -1) {
             String word = new String(buffer, s, e-s+1);
-            count(executorService, word.toLowerCase(), counters, submitted);
+            int h = word.substring(0, 1).charAt(0) % concurrency;
+            tasks.get(h).add(word);
+            submitted.get(h).incrementAndGet();
         }
 
         fileInputStream.close();
 
-        while (submitted.get() != 0) {
+        taskEnd = true;
+
+        boolean counterEnd = false;
+        while (!counterEnd) {
+            counterEnd = true;
+            for (Map.Entry<Integer, AtomicInteger> kv: submitted.entrySet()){
+                if (kv.getValue().get() != 0) {
+                    counterEnd = false;
+                    break;
+                }
+            }
+
             try {
                 Thread.sleep(100);
             } catch (InterruptedException ie) {
@@ -101,37 +162,28 @@ public class FasterWordCounter {
 
         }
 
-        FileOutputStream fileOutputStream = new FileOutputStream("/Users/sion/count.txt");
-        for (Map.Entry<String, Integer> counter :
-                counters.entrySet()) {
-            //System.out.println(String.format("%s %d", counter.getKey(), counter.getValue()));
-            fileOutputStream.write(String.format("%s %d \n", counter.getKey(), counter.getValue()).getBytes());
+        BufferedOutputStream fileOutputStream =
+                new BufferedOutputStream(new FileOutputStream("/Users/sion/count.txt"));
+        for (Map.Entry<Integer, HashMap<String, AtomicInteger>> counter :
+                hashMapHashMap.entrySet()) {
+            for (Map.Entry<String, AtomicInteger> kv:
+                 counter.getValue().entrySet()) {
+
+                fileOutputStream.write(String.format("%s %d \n", kv.getKey(), kv.getValue().intValue()).getBytes());
+            }
         }
         fileOutputStream.close();
 
-        executorService.shutdown();
+        for (Map.Entry<Integer, ExecutorService> kv:
+                executorServiceHashMap.entrySet()) {
+            kv.getValue().shutdown();
+        }
 
         long ts = System.currentTimeMillis() - begin;
 
         System.out.println("end " + ts);
     }
 
-    private static void count(ExecutorService executorService,
-                              String word,
-                              ConcurrentHashMap<String, Integer> counters,
-                              AtomicInteger submitted) {
-        executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                if (counters.containsKey(word)) {
-                    counters.put(word, counters.get(word) + 1);
-                } else {
-                    counters.put(word, 1);
-                }
 
-                submitted.decrementAndGet();
 
-            }
-        });
-    }
 }
