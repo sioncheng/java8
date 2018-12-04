@@ -102,7 +102,7 @@ public class FasterWordCounter {
             submitted.put(i, new AtomicInteger(0));
         }
 
-        HashMap<Integer, LinkedBlockingQueue<CounterItem>> tasks = new HashMap<>(4);
+        HashMap<Integer, LinkedBlockingQueue<CounterItem>> tasks = new HashMap<>(concurrency);
         for (int i = 0 ; i < concurrency; i++) {
             tasks.put(i, new LinkedBlockingQueue());
         }
