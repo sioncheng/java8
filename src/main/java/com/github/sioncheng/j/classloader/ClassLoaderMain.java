@@ -4,6 +4,8 @@ public class ClassLoaderMain {
 
     public static void main(String[] args) throws Exception {
 
+        System.out.println(System.getProperty("java.system.class.loader"));
+
         System.out.println(ClassLoaderMain.class.getClassLoader().toString());
         System.out.println(ClassLoaderMain.class.getClassLoader().getParent().toString());
         //System.out.println(ClassLoaderMain.class.getClassLoader().getParent().getParent().toString());
