@@ -1,12 +1,9 @@
 package com.github.sioncheng.j.io;
 
-import sun.jvmstat.perfdata.monitor.CountedTimerTask;
-
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
