@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
 
 public class FasterWordCounter {
 
@@ -80,6 +81,9 @@ public class FasterWordCounter {
     public static volatile boolean taskEnd = false;
 
     public static void main(String[] args) throws Exception {
+
+        LongAdder longAdder= new LongAdder();
+        longAdder.add(1);
 
         long begin = System.currentTimeMillis();
 

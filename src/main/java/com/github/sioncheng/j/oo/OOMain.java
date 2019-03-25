@@ -16,6 +16,9 @@ public class OOMain {
 
     public static void main(String[] args) {
         System.out.println(new OOMain().a);
+
+        System.out.println(System.nanoTime() % 1000);
+        System.out.println(System.currentTimeMillis() % 1000);
     }
 
 
