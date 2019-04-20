@@ -33,4 +33,9 @@ public class Dish {
     public Type getType() {
         return type;
     }
+
+    @Override
+    public String toString() {
+        return this.getName();
+    }
 }
