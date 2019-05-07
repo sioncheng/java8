@@ -14,27 +14,6 @@ public class WordCounter {
 
     static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
-    static class CounterKey {
-        private String s;
-        public CounterKey(String s) {
-            this.s = s;
-        }
-
-        public String get() {
-            return s;
-        }
-
-        @Override
-        public int hashCode() {
-            return s.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return this == obj || s.compareTo(((CounterKey) obj).get()) == 0;
-        }
-    }
-
     static class Counter  {
         private int init;
         public Counter(int init) {
@@ -107,7 +86,7 @@ public class WordCounter {
                         int maxCountingTimes = 10000;
 
                         for (; ; ) {
-                            Map<CounterKey, Counter> counters = new HashMap<>();
+                            Map<String, Counter> counters = new HashMap<>();
                             accumulated = false;
 
                             String str;
@@ -118,20 +97,20 @@ public class WordCounter {
                                 //System.out.println(str);//此时str就保存了一行字符串
 
                                 String[] arr = str.split(" ");
-                                CounterKey counterKey = new CounterKey(arr[0]);
-                                if (counters.containsKey(counterKey)) {
-                                    counters.get(counterKey).inc(Integer.parseInt(arr[1]));
+                                //CounterKey counterKey = new CounterKey(arr[0]);
+                                if (counters.containsKey(arr[0])) {
+                                    counters.get(arr[0]).inc(Integer.parseInt(arr[1]));
                                     accumulated=true;
                                     countingTimes += 1;
                                 } else {
-                                    counters.put(counterKey, new Counter(Integer.parseInt(arr[1])));
+                                    counters.put(arr[0], new Counter(Integer.parseInt(arr[1])));
                                 }
 
                                 if (countingTimes > maxCountingTimes) {
-                                    for (Map.Entry<CounterKey, Counter> kv :
+                                    for (Map.Entry<String, Counter> kv :
                                             counters.entrySet()) {
 
-                                        bw.write(String.format("%s %d%s", kv.getKey().get(), kv.getValue().get(), LINE_SEPARATOR));
+                                        bw.write(String.format("%s %d%s", kv.getKey(), kv.getValue().get(), LINE_SEPARATOR));
                                     }
 
                                     countingTimes = 0;
@@ -139,10 +118,10 @@ public class WordCounter {
                                 }
                             }
 
-                            for (Map.Entry<CounterKey, Counter> kv :
+                            for (Map.Entry<String, Counter> kv :
                                     counters.entrySet()) {
 
-                                bw.write(String.format("%s %d%s", kv.getKey().get(), kv.getValue().get(), LINE_SEPARATOR));
+                                bw.write(String.format("%s %d%s", kv.getKey(), kv.getValue().get(), LINE_SEPARATOR));
                             }
 
                             br.close();
@@ -173,7 +152,7 @@ public class WordCounter {
             t.start();
         }
 
-        String path = String.format("%s/word_counter/file2.txt", System.getProperty("user.home"));
+        String path = String.format("%s/word_counter/file1.txt", System.getProperty("user.home"));
 
         File file = new File(path);
 
