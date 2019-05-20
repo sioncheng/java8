@@ -10,6 +10,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class HappenBefore {
 
+
+
+
     static class Actor implements Runnable {
 
         int v = 0;
@@ -68,5 +71,7 @@ public class HappenBefore {
         System.out.println(actorSafeWrapper.getV());
 
         forkJoinPool.shutdown();
+
+        System.out.println(UnsafeUtil.instance);
     }
 }
