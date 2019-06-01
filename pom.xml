@@ -11,6 +11,7 @@
     <modules>
         <module>jmh</module>
         <module>dft</module>
+        <module>oom</module>
     </modules>
 
     <dependencyManagement>
