@@ -1,0 +1,168 @@
+package com.github.sioncheng.wrdcntr;
+
+import java.io.FileInputStream;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+public class App0 {
+
+    static final Lock pqLock = new ReentrantLock();
+    static final Condition pCondition = pqLock.newCondition();
+
+    static final int threads = Runtime.getRuntime().availableProcessors() * 4;
+    static final CountDownLatch countDownLatch = new CountDownLatch(threads);
+
+    static final List<LinkedBlockingQueue<String>> wordQueues =new ArrayList<>();
+    static final List<ConcurrentHashMap<String, AtomicInteger>> wordCounters = new ArrayList<>();
+
+    public static void main(String[] args) throws Exception {
+        System.out.println("word counter");
+
+        for(int i = 0; i< threads; i++) {
+            wordQueues.add(new LinkedBlockingQueue<>());
+            wordCounters.add(new ConcurrentHashMap<>());
+        }
+
+
+        for (int i = 0; i < threads; i++) {
+            final int c = i;
+            Thread t = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        while (true) {
+                            String s = wordQueues.get(c).take();
+                            if ("".equals(s)) {
+                                break;
+                            }
+
+                            AtomicInteger atomicInteger= wordCounters.get(c).get(s);
+                            if (atomicInteger == null) {
+                                atomicInteger = new AtomicInteger(0);
+                                wordCounters.get(c).put(s, atomicInteger);
+                            }
+
+                            atomicInteger.incrementAndGet();
+                        }
+                    } catch (InterruptedException ie) {
+
+                    }
+
+                    countDownLatch.countDown();
+                }
+            });
+
+            t.setName("counter-" + i);
+            t.start();
+        }
+
+        Thread producerThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    wordProducer();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+
+                pqLock.lock();
+                pCondition.signalAll();
+                pqLock.unlock();
+            }
+        });
+        producerThread.setName("producer");
+        producerThread.start();
+
+        countDownLatch.await();
+
+
+        for (ConcurrentHashMap<String, AtomicInteger> wordCounter: wordCounters){
+            for (Map.Entry<String, AtomicInteger> kv :
+                    wordCounter.entrySet()) {
+                System.out.println(kv.getKey() + " -> " + kv.getValue());
+            }
+        }
+    }
+
+    private static void wordProducer() throws Exception {
+        FileInputStream fileInputStream = new FileInputStream(Util.PRIDE_AND_PREJUDICE_TXT);
+        FileChannel fileChannel = fileInputStream.getChannel();
+        MappedByteBuffer mappedByteBuffer = null;
+        final long fileSize = fileChannel.size();
+
+        int defaultBlockSize = 10 * 1024 * 1024;
+        long position = 0;
+        int size = 0;
+        long remains = 0;
+
+        if (fileSize > position + defaultBlockSize) {
+            size = defaultBlockSize;
+            remains = size;
+        } else {
+            remains = fileSize - position;
+            size = (int)remains;
+        }
+        while (remains > 0) {
+            mappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, size);
+
+            int p = 0;
+            StringBuilder sb = new StringBuilder();
+            TakeCharStatus takeCharStatus = TakeCharStatus.BEGIN;
+            for (int i = 0 ; i < size; i++) {
+                byte b = mappedByteBuffer.get(i);
+                if (Util.isAlpha(b)) {
+                    if (takeCharStatus == TakeCharStatus.BEGIN) {
+                        takeCharStatus = TakeCharStatus.MIDDLE;
+                        p = i;
+                    }
+                    sb.append((char)b);
+                } else {
+                    if (takeCharStatus == TakeCharStatus.BEGIN) {
+                        continue;
+                    }
+
+                    if (takeCharStatus == TakeCharStatus.MIDDLE) {
+                        int n = mappedByteBuffer.get(i - 1) % threads;
+                        wordQueues.get(n).put(sb.toString());
+
+                        takeCharStatus = TakeCharStatus.BEGIN;
+                        p = 0;
+                        sb = new StringBuilder();
+                    }
+                }
+            }
+
+            if (p == 0) {
+                position = position + size;
+            } else {
+                position = position + p;
+            }
+
+            if (fileSize > position + defaultBlockSize) {
+                size = defaultBlockSize;
+                remains = size;
+            } else {
+                remains = fileSize - position;
+                size = (int)remains;
+            }
+
+        }
+
+
+        fileChannel.close();
+        fileInputStream.close();
+
+        for (LinkedBlockingQueue<String> queue:
+             wordQueues) {
+            queue.put("");
+        }
+    }
+}

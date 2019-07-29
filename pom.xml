@@ -12,6 +12,7 @@
         <module>jmh</module>
         <module>dft</module>
         <module>oom</module>
+        <module>wrd-cntr</module>
     </modules>
 
     <dependencyManagement>
