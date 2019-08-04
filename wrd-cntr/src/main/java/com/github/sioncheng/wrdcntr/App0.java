@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class App0 {
 
-    static final int threads = Runtime.getRuntime().availableProcessors();
+    static final int threads = 2;
     static final CountDownLatch countDownLatch = new CountDownLatch(threads);
 
     static final List<LinkedBlockingQueue<BytesWord>> wordQueues =new ArrayList<>();
@@ -82,7 +82,7 @@ public class App0 {
     }
 
     private static void wordProducer() throws Exception {
-        FileInputStream fileInputStream = new FileInputStream(Util.PRIDE_AND_PREJUDICE_TXT);
+        FileInputStream fileInputStream = new FileInputStream("/Users/sion/app/1.txt");
         FileChannel fileChannel = fileInputStream.getChannel();
         MappedByteBuffer mappedByteBuffer = null;
         final long fileSize = fileChannel.size();
