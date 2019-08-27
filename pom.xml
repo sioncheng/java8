@@ -13,6 +13,10 @@
         <module>dft</module>
         <module>oom</module>
         <module>wrd-cntr</module>
+        <module>jvm-dynamic</module>
+        <module>fake-lib</module>
+        <module>dynamic-app</module>
+        <module>java-agent</module>
     </modules>
 
     <dependencyManagement>
