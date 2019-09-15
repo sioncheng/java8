@@ -1,6 +1,7 @@
 package com.github.sioncheng.j.collections;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -28,5 +29,10 @@ public class ListMain {
         LinkedList<Integer> linkList = new LinkedList<>();
         linkList.add(1);
         linkList.add(2);
+        System.out.println(linkList);
+
+        List<Integer> integerList = Arrays.asList(1,2,3);
+        System.out.println(integerList);
+        integerList.add(4);
     }
 }

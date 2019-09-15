@@ -36,6 +36,7 @@ public class ExecutorExam {
                     TimeUnit.SECONDS.sleep(1);
                     System.out.println(name + "-[" + i + "] @ " + Thread.currentThread().getName());
                 }
+                int j = 100 / 0;
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
